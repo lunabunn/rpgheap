@@ -1,0 +1,6 @@
+-lib heaps
+-lib hlsdl
+-cp src
+-hl bin/game.hl
+-main RPGHeap
+-D windowSize=1088x832
