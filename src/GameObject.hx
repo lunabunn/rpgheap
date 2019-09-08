@@ -5,15 +5,19 @@ class GameObject {
 
     public var gridX: Int = 0;
     public var gridY: Int = 0;
-    public var remX: Float = 0;
-    public var remY: Float = 0;
-    public var deltaX: Float = 0;
-    public var deltaY: Float = 0;
+    // 1000 rem = 1 grid
+    public var remX: Int = 0;
+    public var remY: Int = 0;
+    public var deltaX: Int = 0;
+    public var deltaY: Int = 0;
 
     public var x(get, set): Float;
     public var y(get, set): Float;
     public var pixelX(get, set): Float;
     public var pixelY(get, set): Float;
+
+    private var gameboardX: Int = 0;
+    private var gameboardY: Int = 0;
 
     // region getters & setters
 
@@ -22,40 +26,48 @@ class GameObject {
     }
 
     public function set_x(x) {
+        RPGHeap.current.gameboard[gameboardX][gameboardY].remove(this);
+        RPGHeap.current.gameboard[gameboardX = Math.round(x)][gameboardY].push(this);
         gridX = Math.floor(x);
-        remX = x - gridX;
+        remX = Math.floor((x - gridX) * 1000);
         return x;
     }
 
     public function get_y() {
-        return gridY + remY;
+        return gridY + remY / 1000;
     }
 
     public function set_y(y) {
+        RPGHeap.current.gameboard[gameboardX][gameboardY].remove(this);
+        RPGHeap.current.gameboard[gameboardX][gameboardY = Math.round(y)].push(this);
         gridY = Math.floor(y);
-        remY = y - gridY;
+        remY = Math.floor((y - gridY) * 1000);
         return y;
     }
     
     public function get_pixelX() {
-        return (gridX + remX) * RPGHeap.GRID_WIDTH;
+        return (gridX + remX / 1000) * RPGHeap.GRID_WIDTH;
     }
 
     public function set_pixelX(x: Float) {
         var temp: Float = x / RPGHeap.GRID_WIDTH;
+        RPGHeap.current.gameboard[gameboardX][gameboardY].remove(this);
+        RPGHeap.current.gameboard[gameboardX = Math.round(temp)][gameboardY].push(this);
         gridX = Math.floor(temp);
-        remX = temp - gridX;
+        remX = Math.floor((temp - gridX) * 1000);
         return x;
     }
 
     public function get_pixelY() {
-        return (gridY + remY) * RPGHeap.GRID_HEIGHT;
+        return (gridY + remY / 1000) * RPGHeap.GRID_HEIGHT;
     }
 
     public function set_pixelY(y: Float) {
         var temp: Float = y / RPGHeap.GRID_HEIGHT;
+        RPGHeap.current.gameboard[gameboardX][gameboardY].remove(this);
+        RPGHeap.current.gameboard[gameboardX][gameboardY = Math.round(temp)].push(this);
         gridY = Math.floor(temp);
-        remY = temp - gridY;
+        remY = Math.floor((temp - gridY) * 1000);
         return y;
     }
 
@@ -63,16 +75,25 @@ class GameObject {
 
     public function new() {
         sprite = new Object(RPGHeap.current.s2d);
+        RPGHeap.current.gameboard[gameboardX][gameboardY].push(this);
     }
 
-    public function update(dt: Float) {}
-    public function postUpdate(dt: Float) {
+    public function update(dt: Float) {
+
+    }
+    
+    private function updateGameboard(dt: Float) {
+        RPGHeap.current.gameboard[gameboardX][gameboardY].remove(this);
+        RPGHeap.current.gameboard[gameboardX = Math.round(gridX + (remX + deltaX) / 1000)][gameboardY = Math.round(gridY + (remY + deltaY) / 1000)].push(this);
+    }
+    
+    private function postUpdate(dt: Float) {
         remX += deltaX;
-        while (remX >= 1) {remX--; gridX++;}
-        while (remX < 0) {remX++; gridX--;}
+        while (remX >= 1000) {remX -= 1000; gridX++;}
+        while (remX < 0) {remX += 1000; gridX--;}
         remY += deltaY;
-        while (remY >= 1) {remY--; gridY++;}
-        while (remY < 0) {remY++; gridY--;}
+        while (remY >= 1000) {remY -= 1000; gridY++;}
+        while (remY < 0) {remY += 1000; gridY--;}
 
         sprite.x = pixelX;
         sprite.y = pixelY;
