@@ -1,8 +1,6 @@
 {
     "source": "chessboard.png",
     "colliders": {
-        "0": [false, true, true, false],
-        "1": [false, true, true, false],
         "2": [true, true, true, true]
     }
 }

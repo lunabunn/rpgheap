@@ -10,23 +10,29 @@ class Tilemap extends Object {
     public var width: Int;
     public var height: Int;
 
+    public var colliders = new Array<Array<Array<Bool>>>();
+
     public function new(tileset: Resource, data: Array<Array<Int>>, width: Int, ?parent: Object) {
         super(parent);
         var tileset = Tileset.get(tileset);
         var tx: Int, ty: Int;
         var tilegroup: TileGroup;
         this.width = width;
+        for (i in 0...width) {
+            colliders.push(new Array<Array<Bool>>());
+        }
         for (layer in data) {
             tx = 0;
             ty = 0;
             tilegroup = new TileGroup(tileset.tile, this);
             for (tile in layer) {
                 tilegroup.add(tx * RPGHeap.GRID_WIDTH, ty * RPGHeap.GRID_HEIGHT, tileset.tiles[tile]);
+                colliders[tx][ty] = tileset.colliders[tile];
                 if (tx + 1 < width) tx++;
                 else {tx = 0; ty++;}
             }
-            height = ty + 1;
         }
+        this.height = colliders[0].length;
     }
 }
 
