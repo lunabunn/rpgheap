@@ -7,6 +7,7 @@ using Utilities.MathExtensions;
 class Entity {
     public var sprite: Object;
     public var collider: Array<Bool> = [true, true, true, true];
+    public static var entities = new Array<Entity>();
 
     public var bitmap: Bitmap;
     public var speed: Int = 50;
@@ -16,10 +17,11 @@ class Entity {
     var animPaused = false;
     var currentAnim(default, set): Int = 0;
     var currentFrame(default, set): Int = 0;
-    var movementQueuePrev = new Array<Int>();
 
-    public var gridX: Int = 0;
-    public var gridY: Int = 0;
+    public var gridX(default, set): Int = 0;
+    public var gridY(default, set): Int = 0;
+    public var targetX: Int = 0;
+    public var targetY: Int = 0;
     public var remX: Int = 0;
     public var remY: Int = 0;
     public var deltaX: Int = 0;
@@ -34,6 +36,18 @@ class Entity {
     private var gameboardY: Int = 0;
 
     // region getters & setters
+
+    public function set_gridX(x: Int) {
+        gridX = x;
+        targetX = x;
+        return x;
+    }
+
+    public function set_gridY(y: Int) {
+        gridY = y;
+        targetY = y;
+        return y;
+    }
 
     public function get_x() {
         return gridX + remX;
@@ -118,43 +132,39 @@ class Entity {
 
         this.brain = brain;
         brain.init(this);
+        entities.push(this);
     }
 
     public function update(dt: Float) {
         brain.update(dt);
 
         if (remX % 1000 == 0 && remY % 1000 == 0) {
-            brain.onGrid(dt);
+            brain.onGridBegin(dt);
 
-            if (brain.movementQueue.toString() != movementQueuePrev.toString()) {
-                if (brain.movementQueue.length > 0) {
-                    switch (brain.movementQueue[0]) {
-                        case 0: deltaX = 0; deltaY = speed;
-                        case 1: deltaX = -speed; deltaY = 0;
-                        case 2: deltaX = speed; deltaY = 0;
-                        case 3: deltaX = 0; deltaY = -speed;
-                    }
-                    
-                    if (animPaused) currentFrame++;
-                    if (currentAnim != brain.movementQueue[0]) {
-                        currentAnim = brain.movementQueue[0];
-                    }
-                    animPaused = false;
-                } else {
-                    deltaX = 0;
-                    deltaY = 0;
-                    currentFrame = 0;
-                    animPaused = true;
+            if (brain.moveDir != -1) {
+                switch (brain.moveDir) {
+                    case 0: deltaX = 0; deltaY = speed;
+                    case 1: deltaX = -speed; deltaY = 0;
+                    case 2: deltaX = speed; deltaY = 0;
+                    case 3: deltaX = 0; deltaY = -speed;
                 }
-
-                movementQueuePrev = brain.movementQueue.copy();
+                
+                animPaused = false;
+                if (currentAnim != brain.moveDir) {
+                    currentAnim = brain.moveDir;
+                }
+            } else {
+                deltaX = 0;
+                deltaY = 0;
+                currentFrame = 0;
+                animPaused = true;
             }
 
-            if (brain.movementQueue.length > 0) {
-                var targetX = gridX + Math.sign(deltaX);
-                var targetY = gridY + Math.sign(deltaY);
+            if (brain.moveDir != -1) {
+                targetX = gridX + Math.sign(deltaX);
+                targetY = gridY + Math.sign(deltaY);
                 
-                if (RPGHeap.getCollider(gridX, gridY, brain.movementQueue[0], true) || RPGHeap.getCollider(targetX, targetY, 3 - brain.movementQueue[0])) {
+                if (RPGHeap.getCollider(gridX, gridY, brain.moveDir, true) || RPGHeap.getCollider(targetX, targetY, 3 - brain.moveDir)) {
                     deltaX = 0;
                     deltaY = 0;
                     currentFrame = 0;
@@ -163,12 +173,17 @@ class Entity {
                     RPGHeap.gameboard[gameboardX][gameboardY].remove(this);
                     RPGHeap.gameboard[gameboardX = targetX][gameboardY = targetY].push(this);
                 }
+            } else {
+                targetX = gridX;
+                targetY = gridY;
             }
         }
 
-        if (!animPaused && remX % 500 == 0 && remY % 500 == 0) {
+        if (!animPaused && remX % Math.closestMultiple(500, speed) == 0 && remY % Math.closestMultiple(500, speed) == 0) {
             currentFrame++;
         }
+
+        brain.onGridEnd(dt);
 
         remX += deltaX;
         while (remX >= 1000) {remX -= 1000; gridX++;}
@@ -179,5 +194,16 @@ class Entity {
 
         sprite.x = pixelX;
         sprite.y = pixelY;
+    }
+}
+
+// I know "interactable" isn't a real word, no need to enlighten me on that
+class Interactable extends Entity {
+    public function new(charchip: Tile, brain: Brain) {
+        super(charchip, brain);
+    }
+
+    public function interact() {
+        trace('$this >> I\'ve been interacted with!');
     }
 }

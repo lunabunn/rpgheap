@@ -6,10 +6,9 @@ class RPGHeap extends hxd.App {
     public static final GRID_WIDTH: Int = 32;
     public static final GRID_HEIGHT: Int = 32;
 
-    public static var player: Entity;
     public static var map: Tilemap;
     public static var gameboard: Array<Array<Array<Entity>>>;
-    public static var colliderGraphics: ColliderGraphics;
+    public static var debugGraphics: DebugGraphics;
 
     public static function get(): RPGHeap {
         return current;
@@ -23,17 +22,25 @@ class RPGHeap extends hxd.App {
         gameboard = createGameboard(map.width, map.height);
 
         // Using Jael character sprite by Sithjester as placeholder, many thanks!
-        player = new Entity(Res.jael.toTile(), new Brain.PlayerBrain());
+        var player = new Entity(Res.jael.toTile(), new Brain.PlayerBrain());
         player.x = 8;
         player.y = 6;
+        player.speed = 50;
 
-        colliderGraphics = new ColliderGraphics(s2d);
-        colliderGraphics.update(0);
+        var dummy = new Entity.Interactable(Res.jael.toTile(), new Brain());
+        dummy.x = 4;
+        dummy.y = 6;
+        dummy.speed = 40;
+
+        debugGraphics = new DebugGraphics(s2d);
+        debugGraphics.update(0);
     }
 
     override function update(dt: Float) {
-        player.update(dt);
-        colliderGraphics.update(dt);
+        for (entity in Entity.entities) {
+            entity.update(dt);
+        }
+        debugGraphics.update(dt);
     }
 
     public static function getCollider(x: Int, y: Int, dir: Int, mapOnly=false) {
@@ -64,7 +71,7 @@ class RPGHeap extends hxd.App {
     }
 }
 
-class ColliderGraphics extends Graphics {
+class DebugGraphics extends Graphics {
     public function update(dt: Float) {
         this.clear();
         this.beginFill(0x0000FF, .5);
@@ -95,6 +102,12 @@ class ColliderGraphics extends Graphics {
                 if (up) this.drawRect(x * RPGHeap.GRID_WIDTH, y * RPGHeap.GRID_HEIGHT, RPGHeap.GRID_WIDTH, 5);
             }
         }
+        this.endFill();
+
+        this.beginFill(0x00FF00, .5);
+        var cx = (Entity.entities[0].targetX + 0.5) * RPGHeap.GRID_WIDTH;
+        var cy = (Entity.entities[0].targetY + 0.5) * RPGHeap.GRID_HEIGHT;
+        this.drawRect(cx - 4, cy - 4, 8, 8);
         this.endFill();
     }
 }
