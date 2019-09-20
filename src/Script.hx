@@ -1,7 +1,7 @@
-private enum Tokens {
+enum Tokens {
     LEFT_PAREN; RIGHT_PAREN;
     MINUS; PLUS; DIVIDE; MULTIPLY;
-    MODULO; COLON; DOT;
+    MODULO; COLON; DOT; SPACE;
     INDENT; NEWLINE; EOF;
 
     EQUAL; EQUAL_EQUAL;
@@ -13,7 +13,7 @@ private enum Tokens {
     IDENTIFIER; STRING; NUMBER;
 }
 
-private class Token {
+class Token {
     public var type: Tokens;
     public var value: Dynamic;
 
@@ -27,7 +27,7 @@ private class Token {
     }
 }
 
-private class BinaryExpression {
+class BinaryExpression {
     public var a: Dynamic;
     public var b: Dynamic;
     public var op: Tokens;
@@ -57,7 +57,7 @@ private class BinaryExpression {
     }
 }
 
-private class UnaryExpression {
+class UnaryExpression {
     public var value: Dynamic;
     public var op: Tokens;
 
@@ -104,7 +104,16 @@ class Scanner {
                 case ":": tokens[tokens.length - 1].push(new Token(Tokens.COLON)); i++; continue;
                 case ".": tokens[tokens.length - 1].push(new Token(Tokens.DOT)); i++; continue;
                 case "\t": tokens[tokens.length - 1].push(new Token(Tokens.INDENT)); i++; continue;
-                case " ": if (eatNext(" ") && eatNext(" ") && eatNext(" ")) tokens[tokens.length - 1].push(new Token(Tokens.INDENT)); i++; continue;
+                case " ":
+                    if (eatNext(" ") && eatNext(" ") && eatNext(" ")) {
+                        tokens[tokens.length - 1].push(new Token(Tokens.INDENT));
+                        i++;
+                        continue;
+                    } else {
+                        tokens[tokens.length - 1].push(new Token(Tokens.SPACE));
+                        i = start + 1;
+                        continue;
+                    }
                 case "\n": if (tokens[tokens.length - 1].length > 0) tokens.push(new Array<Token>()); i++; continue;
 
                 case "=": if (eatNext("=")) tokens[tokens.length - 1].push(new Token(EQUAL_EQUAL)); else tokens[tokens.length - 1].push(new Token(EQUAL)); i++; continue;
@@ -261,26 +270,51 @@ class Scanner {
 }
 
 class Parser {
+    var n: Int = 0;
+    var lines: Array<Array<Token>>;
     var variables = new Map<String, Dynamic>();
+    var events: Map<String, Event> = ["message" => new Event.MessageEvent()];
+
+    public var running = false;
     
     public function new() {
         //
     }
 
-    public function parse(tokens: Array<Array<Token>>) {
-        var _lines = new Array<Array<String>>();
-        for (line in tokens) {
-            var _line = new Array<String>();
-            for (token in line) {
-                _line.push(token.toString());
-            }
-            _lines.push(_line);
-        }
-        trace(_lines);
+    public function eventOver() {
+        if (n + 1 < lines.length) {
+            n++;
+            parseLine();
+        } else running = false;
     }
 
-    private function parseExpression(tokens: Array<Token>): Array<Dynamic> {
-        var AST: Array<Dynamic> = [];
+    public function parse(lines: Array<Array<Token>>) {
+        n = 0;
+        this.lines = lines;
+        running = true;
+        parseLine();
+    }
+
+    private function parseLine() {
+        var line = lines[n].copy();
+        var event = events[line.shift().value];
+        var args = new Array<Dynamic>();
+
+        var temp = new Array<Token>();
+        while (line.length > 0) {
+            if (line[0].type == Tokens.SPACE) {
+                if (temp.length > 0) args.push(evaluateExpression(parseExpression(temp)));
+                temp = new Array<Token>();
+                line.shift();
+            } else {
+                temp.push(line.shift());
+            }
+        }
+        if (temp.length > 0) args.push(evaluateExpression(parseExpression(temp)));
+        event.run(eventOver, args);
+    }
+
+    private function parseExpression(tokens: Array<Token>): Dynamic {
         var inParentheses = false;
 
         if (tokens.length > 0 && tokens[0].type == Tokens.LEFT_PAREN && tokens[tokens.length - 1].type == Tokens.RIGHT_PAREN) {
@@ -295,8 +329,7 @@ class Parser {
             if (inParentheses) continue;
 
             if (tokens[j].type == Tokens.OR) {
-                AST.push(new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.OR));
-                return AST;
+                return new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.OR);
             }
 
             j--;
@@ -309,8 +342,7 @@ class Parser {
             if (inParentheses) continue;
 
             if (tokens[j].type == Tokens.AND) {
-                AST.push(new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.AND));
-                return AST;
+                return new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.AND);
             }
 
             j--;
@@ -323,8 +355,7 @@ class Parser {
             if (inParentheses) continue;
 
             if (tokens[j].type == Tokens.NOT) {
-                AST.push(new UnaryExpression(parseExpression(tokens.slice(j + 1)), Tokens.NOT));
-                return AST;
+                return new UnaryExpression(parseExpression(tokens.slice(j + 1)), Tokens.NOT);
             }
 
             j--;
@@ -338,20 +369,15 @@ class Parser {
             if (inParentheses) continue;
 
             if (tokens[j].type == Tokens.EQUAL_EQUAL) {
-                AST.push(new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.EQUAL_EQUAL));
-                return AST;
+                return new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.EQUAL_EQUAL);
             } else if (tokens[j].type == Tokens.LESS) {
-                AST.push(new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.LESS));
-                return AST;
+                return new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.LESS);
             } else if (tokens[j].type == Tokens.LESS_EQUAL) {
-                AST.push(new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.LESS_EQUAL));
-                return AST;
+                return new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.LESS_EQUAL);
             } else if (tokens[j].type == Tokens.GREATER) {
-                AST.push(new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.GREATER));
-                return AST;
+                return new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.GREATER);
             } else if (tokens[j].type == Tokens.GREATER_EQUAL) {
-                AST.push(new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.GREATER_EQUAL));
-                return AST;
+                return new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.GREATER_EQUAL);
             }
 
             j--;
@@ -365,11 +391,9 @@ class Parser {
             if (inParentheses) continue;
 
             if (tokens[j].type == Tokens.PLUS) {
-                AST.push(new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.PLUS));
-                return AST;
+                return new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.PLUS);
             } else if (tokens[j].type == Tokens.MINUS) {
-                AST.push(new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.MINUS));
-                return AST;
+                return new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.MINUS);
             }
 
             j--;
@@ -383,14 +407,11 @@ class Parser {
             if (inParentheses) continue;
 
             if (tokens[j].type == Tokens.DIVIDE) {
-                AST.push(new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.DIVIDE));
-                return AST;
+                return new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.DIVIDE);
             } else if (tokens[j].type == Tokens.MULTIPLY) {
-                AST.push(new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.MULTIPLY));
-                return AST;
+                return new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.MULTIPLY);
             } else if (tokens[j].type == Tokens.MODULO) {
-                AST.push(new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.MODULO));
-                return AST;
+                return new BinaryExpression(parseExpression(tokens.slice(0, j)), parseExpression(tokens.slice(j + 1)), Tokens.MODULO);
             }
             
             j--;
@@ -399,7 +420,7 @@ class Parser {
         return tokens;
     }
 
-    private function evaluateExpression(subtree: Array<Dynamic>): Dynamic {
+    private function evaluateExpression(subtree: Dynamic): Dynamic {
         subtree = subtree[0];
         if (Std.is(subtree, BinaryExpression)) {
             var _subtree = cast (subtree, BinaryExpression);

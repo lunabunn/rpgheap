@@ -199,11 +199,16 @@ class Entity {
 
 // I know "interactable" isn't a real word, no need to enlighten me on that
 class Interactable extends Entity {
+    public var script: Array<Array<Script.Token>>;
+    public var parser = new Script.Parser();
+
     public function new(charchip: Tile, brain: Brain) {
         super(charchip, brain);
+        var scanner = new Script.Scanner();
+        script = scanner.tokenize("message \"Hello, World!\"\nmessage \"Bye, World!\"");
     }
 
     public function interact() {
-        trace('$this >> I\'ve been interacted with!');
+        if (!parser.running) parser.parse(script);
     }
 }

@@ -3,6 +3,8 @@ import hxd.Res;
 
 class RPGHeap extends hxd.App {
     static var current: RPGHeap;
+    public static final WIDTH: Int = 544;
+    public static final HEIGHT: Int = 416;
     public static final GRID_WIDTH: Int = 32;
     public static final GRID_HEIGHT: Int = 32;
 
@@ -16,7 +18,7 @@ class RPGHeap extends hxd.App {
     
     override function init() {
         hxd.Res.initEmbed();
-        s2d.scaleMode = ScaleMode.LetterBox(544, 416);
+        s2d.scaleMode = ScaleMode.LetterBox(WIDTH, HEIGHT);
 
         map = new Tilemap(Res.chessboard_json, [[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1]], 17, s2d);
         gameboard = createGameboard(map.width, map.height);
@@ -39,6 +41,9 @@ class RPGHeap extends hxd.App {
     override function update(dt: Float) {
         for (entity in Entity.entities) {
             entity.update(dt);
+        }
+        for (event in Event.events) {
+            event.update(dt);
         }
         debugGraphics.update(dt);
     }
