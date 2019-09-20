@@ -10,7 +10,7 @@ class Entity {
     public static var entities = new Array<Entity>();
 
     public var bitmap: Bitmap;
-    public var speed: Int = 50;
+    public var speed: Float = 2;
     public var brain: Brain;
 
     var anims = new Array<Array<Tile>>();
@@ -22,18 +22,18 @@ class Entity {
     public var gridY(default, set): Int = 0;
     public var targetX: Int = 0;
     public var targetY: Int = 0;
-    public var remX: Int = 0;
-    public var remY: Int = 0;
-    public var deltaX: Int = 0;
-    public var deltaY: Int = 0;
+    public var remX: Float = 0;
+    public var remY: Float = 0;
+    public var deltaX: Float = 0;
+    public var deltaY: Float = 0;
 
     public var x(get, set): Float;
     public var y(get, set): Float;
     public var pixelX(get, set): Float;
     public var pixelY(get, set): Float;
 
-    private var gameboardX: Int = 0;
-    private var gameboardY: Int = 0;
+    public var gameboardX: Int = 0;
+    public var gameboardY: Int = 0;
 
     // region getters & setters
 
@@ -57,24 +57,24 @@ class Entity {
         RPGHeap.gameboard[gameboardX][gameboardY].remove(this);
         RPGHeap.gameboard[gameboardX = Math.round(x)][gameboardY].push(this);
         gridX = Math.floor(x);
-        remX = Math.floor((x - gridX) * 1000);
+        remX = Math.floor((x - gridX) * RPGHeap.GRID_WIDTH);
         return x;
     }
 
     public function get_y() {
-        return gridY + remY / 1000;
+        return gridY + remY / RPGHeap.GRID_HEIGHT;
     }
 
     public function set_y(y) {
         RPGHeap.gameboard[gameboardX][gameboardY].remove(this);
         RPGHeap.gameboard[gameboardX][gameboardY = Math.round(y)].push(this);
         gridY = Math.floor(y);
-        remY = Math.floor((y - gridY) * 1000);
+        remY = Math.floor((y - gridY) * RPGHeap.GRID_HEIGHT);
         return y;
     }
     
     public function get_pixelX() {
-        return (gridX + remX / 1000) * RPGHeap.GRID_WIDTH;
+        return gridX * RPGHeap.GRID_WIDTH + remX;
     }
 
     public function set_pixelX(x: Float) {
@@ -82,12 +82,12 @@ class Entity {
         RPGHeap.gameboard[gameboardX][gameboardY].remove(this);
         RPGHeap.gameboard[gameboardX = Math.round(temp)][gameboardY].push(this);
         gridX = Math.floor(temp);
-        remX = Math.floor((temp - gridX) * 1000);
+        remX = Math.floor(x - gridX * RPGHeap.GRID_WIDTH);
         return x;
     }
 
     public function get_pixelY() {
-        return (gridY + remY / 1000) * RPGHeap.GRID_HEIGHT;
+        return gridY * RPGHeap.GRID_HEIGHT + remY;
     }
 
     public function set_pixelY(y: Float) {
@@ -95,7 +95,7 @@ class Entity {
         RPGHeap.gameboard[gameboardX][gameboardY].remove(this);
         RPGHeap.gameboard[gameboardX][gameboardY = Math.round(temp)].push(this);
         gridY = Math.floor(temp);
-        remY = Math.floor((temp - gridY) * 1000);
+        remY = Math.floor(y - gridY * RPGHeap.GRID_HEIGHT);
         return y;
     }
 
@@ -138,10 +138,22 @@ class Entity {
     public function update(dt: Float) {
         brain.update(dt);
 
-        if (remX % 1000 == 0 && remY % 1000 == 0) {
+        if ((remX < speed || RPGHeap.GRID_WIDTH - remX < speed)
+            && (remY < speed || RPGHeap.GRID_HEIGHT - remY < speed)) {
             brain.onGridBegin(dt);
-
+            
             if (brain.moveDir != -1) {
+                if (remX < speed) remX = 0;
+                if (remY < speed) remY = 0;
+                if (RPGHeap.GRID_WIDTH - remX < speed) {
+                    gridX++;
+                    remX = 0;
+                }
+                if (RPGHeap.GRID_HEIGHT - remY < speed) {
+                    gridY++;
+                    remY = 0;
+                }
+
                 switch (brain.moveDir) {
                     case 0: deltaX = 0; deltaY = speed;
                     case 1: deltaX = -speed; deltaY = 0;
@@ -156,17 +168,33 @@ class Entity {
             } else {
                 deltaX = 0;
                 deltaY = 0;
+                if (RPGHeap.GRID_WIDTH - remX < speed) {
+                    gridX++;
+                }
+                if (RPGHeap.GRID_HEIGHT - remY < speed) {
+                    gridY++;
+                }
+                remX = 0;
+                remY = 0;
                 currentFrame = 0;
                 animPaused = true;
             }
 
             if (brain.moveDir != -1) {
-                targetX = gridX + Math.sign(deltaX);
-                targetY = gridY + Math.sign(deltaY);
+                targetX = gridX + ((RPGHeap.GRID_WIDTH - remX < speed)? 1:0) + Math.sign(deltaX);
+                targetY = gridY + ((RPGHeap.GRID_HEIGHT - remY < speed)? 1:0) + Math.sign(deltaY);
                 
-                if (RPGHeap.getCollider(gridX, gridY, brain.moveDir, true) || RPGHeap.getCollider(targetX, targetY, 3 - brain.moveDir)) {
+                if (RPGHeap.getCollider(gridX, gridY, brain.moveDir, true) || RPGHeap.getCollider(targetX, targetY, 3 - brain.moveDir, this)) {
                     deltaX = 0;
                     deltaY = 0;
+                    if (RPGHeap.GRID_WIDTH - remX < speed) {
+                        gridX++;
+                    }
+                    if (RPGHeap.GRID_HEIGHT - remY < speed) {
+                        gridY++;
+                    }
+                    remX = 0;
+                    remY = 0;
                     currentFrame = 0;
                     animPaused = true;
                 } else {
@@ -179,18 +207,18 @@ class Entity {
             }
         }
 
-        if (!animPaused && remX % Math.closestMultiple(500, speed) == 0 && remY % Math.closestMultiple(500, speed) == 0) {
+        if (!animPaused && remX % (RPGHeap.GRID_WIDTH / 2) < speed && remY % (RPGHeap.GRID_HEIGHT / 2) < speed) {
             currentFrame++;
         }
 
         brain.onGridEnd(dt);
 
         remX += deltaX;
-        while (remX >= 1000) {remX -= 1000; gridX++;}
-        while (remX < 0) {remX += 1000; gridX--;}
+        while (remX >= RPGHeap.GRID_WIDTH) {remX -= RPGHeap.GRID_WIDTH; gridX++;}
+        while (remX < 0) {remX += RPGHeap.GRID_WIDTH; gridX--;}
         remY += deltaY;
-        while (remY >= 1000) {remY -= 1000; gridY++;}
-        while (remY < 0) {remY += 1000; gridY--;}
+        while (remY >= RPGHeap.GRID_HEIGHT) {remY -= RPGHeap.GRID_HEIGHT; gridY++;}
+        while (remY < 0) {remY += RPGHeap.GRID_HEIGHT; gridY--;}
 
         sprite.x = pixelX;
         sprite.y = pixelY;

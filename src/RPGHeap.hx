@@ -27,14 +27,15 @@ class RPGHeap extends hxd.App {
         var player = new Entity(Res.jael.toTile(), new Brain.PlayerBrain());
         player.x = 8;
         player.y = 6;
-        player.speed = 50;
+        player.speed = 1.5;
 
         var dummy = new Entity.Interactable(Res.jael.toTile(), new Brain());
         dummy.x = 4;
         dummy.y = 6;
-        dummy.speed = 40;
+        dummy.speed = 1;
 
         debugGraphics = new DebugGraphics(s2d);
+        // debugGraphics.visible = false;
         debugGraphics.update(0);
     }
 
@@ -48,12 +49,13 @@ class RPGHeap extends hxd.App {
         debugGraphics.update(dt);
     }
 
-    public static function getCollider(x: Int, y: Int, dir: Int, mapOnly=false) {
+    public static function getCollider(x: Int, y: Int, dir: Int, ?excludeEntity:Entity, mapOnly=false) {
         if (x < 0 || y < 0 || x >= map.width || y >= map.height) return true;
         var out = map.colliders[x][y][dir];
         if (mapOnly) return out;
-        for (Entity in gameboard[x][y]) {
-            out = out || Entity.collider[dir];
+        for (entity in gameboard[x][y]) {
+            if (entity == excludeEntity) continue;
+            out = out || entity.collider[dir];
         }
         return out;
     }
