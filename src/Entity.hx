@@ -114,7 +114,7 @@ class Entity {
     // end region
 
     public function new(charChip: Tile, brain: Brain) {
-        sprite = new Object(RPGHeap.get().s2d);
+        sprite = new Object(RPGHeap.viewport);
         RPGHeap.gameboard[gameboardX][gameboardY].push(this);
 
         var cw = charChip.width / 4;
@@ -128,7 +128,7 @@ class Entity {
         
         bitmap = new Bitmap(anims[0][0], sprite);
         animPaused = true;
-        bitmap.y = -27;
+        bitmap.y = Math.floor(RPGHeap.GRID_HEIGHT - ch - 8);
 
         this.brain = brain;
         brain.init(this);

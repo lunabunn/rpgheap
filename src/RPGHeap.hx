@@ -8,7 +8,9 @@ class RPGHeap extends hxd.App {
     public static final GRID_WIDTH: Int = 32;
     public static final GRID_HEIGHT: Int = 32;
 
+    public static var viewport: Viewport;
     public static var map: Tilemap;
+    public static var player: Entity;
     public static var gameboard: Array<Array<Array<Entity>>>;
     public static var debugGraphics: DebugGraphics;
 
@@ -20,11 +22,13 @@ class RPGHeap extends hxd.App {
         hxd.Res.initEmbed();
         s2d.scaleMode = ScaleMode.LetterBox(WIDTH, HEIGHT);
 
-        map = new Tilemap(Res.chessboard_json, [[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1]], 17, s2d);
+        viewport = new Viewport(s2d);
+
+        map = new Tilemap(Res.chessboard_json, [[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1]], 25, viewport);
         gameboard = createGameboard(map.width, map.height);
 
         // Using Jael character sprite by Sithjester as placeholder, many thanks!
-        var player = new Entity(Res.jael.toTile(), new Brain.PlayerBrain());
+        player = new Entity(Res.jael.toTile(), new Brain.PlayerBrain());
         player.x = 8;
         player.y = 6;
         player.speed = 1.5;
@@ -34,7 +38,7 @@ class RPGHeap extends hxd.App {
         dummy.y = 6;
         dummy.speed = 1;
 
-        debugGraphics = new DebugGraphics(s2d);
+        debugGraphics = new DebugGraphics(viewport);
         // debugGraphics.visible = false;
         debugGraphics.update(0);
     }
@@ -43,6 +47,7 @@ class RPGHeap extends hxd.App {
         for (entity in Entity.entities) {
             entity.update(dt);
         }
+        viewport.center(player);
         for (event in Event.events) {
             event.update(dt);
         }
