@@ -9,6 +9,8 @@ import h2d.TileGroup;
 class Tilemap extends Object {
     public var width: Int;
     public var height: Int;
+    public var pixelWidth: Int;
+    public var pixelHeight: Int;
 
     public var colliders = new Array<Array<Array<Bool>>>();
 
@@ -18,6 +20,7 @@ class Tilemap extends Object {
         var tx: Int, ty: Int;
         var tilegroup: TileGroup;
         this.width = width;
+        pixelWidth = width * RPGHeap.GRID_WIDTH;
         for (i in 0...width) {
             colliders.push(new Array<Array<Bool>>());
         }
@@ -32,7 +35,8 @@ class Tilemap extends Object {
                 else {tx = 0; ty++;}
             }
         }
-        this.height = colliders[0].length;
+        height = colliders[0].length;
+        pixelHeight = height * RPGHeap.GRID_HEIGHT;
     }
 }
 
