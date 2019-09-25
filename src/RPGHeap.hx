@@ -9,6 +9,7 @@ class RPGHeap extends hxd.App {
     public static final GRID_HEIGHT: Int = 32;
 
     public static var viewport: Viewport;
+    public static var isCameraAuto: Bool = true;
     public static var map: Tilemap;
     public static var player: Entity;
     public static var gameboard: Array<Array<Array<Entity>>>;
@@ -24,7 +25,7 @@ class RPGHeap extends hxd.App {
 
         viewport = new Viewport(s2d);
 
-        map = new Tilemap(Res.tilesets.chessboard_json, [[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1]], 25, viewport);
+        map = new Tilemap(Res.tilesets.chessboard_json, [[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,2,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1]], 25, viewport.container);
         gameboard = createGameboard(map.width, map.height);
 
         // Using Jael character sprite by Sithjester as placeholder, many thanks!
@@ -38,7 +39,7 @@ class RPGHeap extends hxd.App {
         dummy.y = 6;
         dummy.speed = 1;
 
-        debugGraphics = new DebugGraphics(viewport);
+        debugGraphics = new DebugGraphics(viewport.container);
         // debugGraphics.visible = false;
         debugGraphics.update(0);
     }
@@ -47,7 +48,7 @@ class RPGHeap extends hxd.App {
         for (entity in Entity.entities) {
             entity.update(dt);
         }
-        viewport.center(player);
+        if (isCameraAuto) viewport.center(player);
         for (event in Event.events) {
             event.update(dt);
         }

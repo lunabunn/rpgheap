@@ -2,8 +2,11 @@ import h2d.Object;
 using Utilities.MathExtensions;
 
 class Viewport extends Object {
+    public var container: Object;
+
     public function new(parent) {
         super(parent);
+        container = new Object(this);
     }
 
     public function center(entity: Entity) {

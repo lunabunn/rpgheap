@@ -97,7 +97,18 @@ class Scanner {
 
                 case "(": tokens[tokens.length - 1].push(new Token(Tokens.LEFT_PAREN)); i++; continue;
                 case ")": tokens[tokens.length - 1].push(new Token(Tokens.RIGHT_PAREN)); i++; continue;
-                case "-": tokens[tokens.length - 1].push(new Token(Tokens.MINUS)); i++; continue;
+                case "-":
+                    var _tokens = tokens[tokens.length - 1].copy();
+                    _tokens.reverse();
+                    for (token in _tokens) {
+                        if (token.type == Tokens.SPACE) continue;
+                        if (token.type == Tokens.NUMBER) {
+                            tokens[tokens.length - 1].push(new Token(Tokens.MINUS));
+                            i++;
+                            continue;
+                        }
+                        break;
+                    }
                 case "+": tokens[tokens.length - 1].push(new Token(Tokens.PLUS)); i++; continue;
                 case "/": tokens[tokens.length - 1].push(new Token(Tokens.DIVIDE)); i++; continue;
                 case "*": tokens[tokens.length - 1].push(new Token(Tokens.MULTIPLY)); i++; continue;
@@ -293,6 +304,13 @@ class Label extends ScriptCommand {
 
 class Parser {
     public var variables: Map<String, Dynamic> = [];
+    var events: Map<String, Event> = [
+        "message" => new Event.MessageEvent(),
+        "delay" => new Event.DelayEvent(),
+        "cameramode" => new Event.CameraModeEvent(),
+        "camerawalk" => new Event.CameraWalkEvent(),
+        "shake" => new Event.ShakeEvent()
+    ];
 
     public function new() {
         //
@@ -303,7 +321,7 @@ class Parser {
         var indentLevel = -1;
         var currentLabel: Label = null;
         for (line in lines) {
-            var _indentLevel = 0;
+            var _indentLevel = -1;
             if (line.length == 0) continue;
             while (line[0].type == Tokens.INDENT) {
                 line.shift();

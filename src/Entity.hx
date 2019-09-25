@@ -114,7 +114,7 @@ class Entity {
     // end region
 
     public function new(charChip: Tile, brain: Brain) {
-        sprite = new Object(RPGHeap.viewport);
+        sprite = new Object(RPGHeap.viewport.container);
         RPGHeap.gameboard[gameboardX][gameboardY].push(this);
 
         var cw = charChip.width / 4;
