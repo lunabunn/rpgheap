@@ -1,3 +1,4 @@
+// region scanner
 enum Tokens {
     LEFT_PAREN; RIGHT_PAREN;
     MINUS; PLUS; DIVIDE; MULTIPLY;
@@ -8,7 +9,7 @@ enum Tokens {
     GREATER; GREATER_EQUAL;
     LESS; LESS_EQUAL;
 
-    LABEL; EXEC; IF; ELSE; ELIF;
+    LABEL; JUMP; IF; ELSE; ELIF;
     WHILE; NOT; AND; OR; TRUE; FALSE;
     IDENTIFIER; STRING; NUMBER;
 }
@@ -17,7 +18,7 @@ class Token {
     public var type: Tokens;
     public var value: Dynamic;
 
-    public function new(type: Tokens, ?value: Dynamic) {
+    public function new(type: Tokens, value: Dynamic=null) {
         this.type = type;
         this.value = value;
     }
@@ -92,7 +93,7 @@ class Scanner {
             start = i;
             char = str.charAt(i);
             switch (char) {
-                case "#": while (!peakNext("\n")) i++; i++; continue;
+                case "#": while (!peakNext("\n") && i < str.length) i++; i++; continue;
 
                 case "(": tokens[tokens.length - 1].push(new Token(Tokens.LEFT_PAREN)); i++; continue;
                 case ")": tokens[tokens.length - 1].push(new Token(Tokens.RIGHT_PAREN)); i++; continue;
@@ -115,6 +116,7 @@ class Scanner {
                         continue;
                     }
                 case "\n": if (tokens[tokens.length - 1].length > 0) tokens.push(new Array<Token>()); i++; continue;
+                case "\r": i++; continue;
 
                 case "=": if (eatNext("=")) tokens[tokens.length - 1].push(new Token(EQUAL_EQUAL)); else tokens[tokens.length - 1].push(new Token(EQUAL)); i++; continue;
                 case ">": if (eatNext("=")) tokens[tokens.length - 1].push(new Token(GREATER_EQUAL)); else tokens[tokens.length - 1].push(new Token(GREATER)); i++; continue;
@@ -157,6 +159,14 @@ class Scanner {
                     } else {
                         i = start;
                     }
+                case "j":
+                    if (eatNext("u") && eatNext("m") && eatNext("p")) {
+                        tokens[tokens.length - 1].push(new Token(Tokens.JUMP));
+                        i++;
+                        continue;
+                    } else {
+                        i = start;
+                    }
                 case "e":
                     if (eatNext("l")) {
                         if (eatNext("s") && eatNext("e")) {
@@ -172,12 +182,6 @@ class Scanner {
                             } else {
                                 i = start;
                             }
-                        }
-                    } else if (eatNext("x")) {
-                        if (eatNext("e") && eatNext("c")) {
-                            tokens[tokens.length - 1].push(new Token(Tokens.EXEC));
-                            i++;
-                            continue;
                         }
                     }
                 
@@ -268,50 +272,63 @@ class Scanner {
         return charCode >= 48 && charCode <= 57;
     }
 }
+// end region
+// region parser
+class ScriptCommand {
+    public function new() {}
+    public function run() {}
+}
+
+class TokenList extends ScriptCommand {
+    public var tokens: Array<Token>;
+    public function new(tokens: Array<Token>) {
+        super();
+        this.tokens = tokens;
+    }
+}
+
+class Label extends ScriptCommand {
+    public var commands = new Array<ScriptCommand>();
+}
 
 class Parser {
-    var n: Int = 0;
-    var lines: Array<Array<Token>>;
-    var variables = new Map<String, Dynamic>();
-    var events: Map<String, Event> = ["message" => new Event.MessageEvent()];
+    public var variables: Map<String, Dynamic> = [];
 
-    public var running = false;
-    
     public function new() {
         //
     }
 
-    public function eventOver() {
-        if (n + 1 < lines.length) {
-            n++;
-            parseLine();
-        } else running = false;
-    }
-
-    public function parse(lines: Array<Array<Token>>) {
-        n = 0;
-        this.lines = lines;
-        running = true;
-        parseLine();
-    }
-
-    private function parseLine() {
-        var line = lines[n].copy();
-        var event = events[line.shift().value];
-        var args = new Array<Dynamic>();
-
-        var temp = new Array<Token>();
-        while (line.length > 0) {
-            if (line[0].type == Tokens.SPACE) {
-                if (temp.length > 0) args.push(evaluateExpression(parseExpression(temp)));
-                temp = new Array<Token>();
+    public function parse(lines: Array<Array<Token>>): Map<String, Label> {
+        var labels = new Map<String, Label>();
+        var indentLevel = -1;
+        var currentLabel: Label = null;
+        for (line in lines) {
+            var _indentLevel = 0;
+            if (line.length == 0) continue;
+            while (line[0].type == Tokens.INDENT) {
                 line.shift();
-            } else {
-                temp.push(line.shift());
+                if (line.length == 0) break;
+                _indentLevel++;
             }
+            if (line.length == 0) continue;
+            
+            if (_indentLevel == -1) {
+                if (line[0].type == Tokens.LABEL) {
+                    line.shift();
+                    while (line[0].type == Tokens.SPACE) {
+                        line.shift();
+                    }
+                    labels[cast(line[0].value, String)] = currentLabel = new Label();
+                }
+            } else if (currentLabel != null) {
+                currentLabel.commands.push(new TokenList(line));
+            }
+
+            indentLevel = _indentLevel;
         }
-        if (temp.length > 0) args.push(evaluateExpression(parseExpression(temp)));
-        event.run(eventOver, args);
+        
+        trace(labels["main"].commands);
+        return labels;
     }
 
     private function parseExpression(tokens: Array<Token>): Dynamic {
@@ -442,3 +459,4 @@ class Parser {
         return null;
     }
 }
+// end region

@@ -1,0 +1,49 @@
+# This is a sample RPGHeap script
+# Feel free to use this as a starting point for your own game
+
+# Variable Assignment
+# variable = value
+
+# Operators:
+# Bool > Bool: a or b, a and b, not x
+# Number > Bool: a == b, a > b, a >= b, a < b, a <= b
+# Number > Number: a + b, a - b, a * b, a / b, a % b
+# Any > Bool: a == b
+# String > String: a + b
+
+label main:
+    # Code in main is what gets run when the event is run
+    # Make sure to indent all code inside label declarations with 4 spaces
+    text "Once upon a time, there was a single, lonely star..." # Event arguments are separated with spaces
+    choice:
+        "I want to know more!":
+            jump more // You can use the syntax jump <label> to execute other labels
+        "So what?":
+            message "..."
+            message "Well, never mind, then."
+
+label more:
+    # Code in here will be executed when jump more is called
+    # The whole code is parsed before anything is executed, so labels don't have to be initialized before they are called
+    message "..."
+    message "Well, then, have a seat, my child."
+    message "It will be a long story..."
+
+
+label conditionals:
+    # By default, variables' scopes are limited to the script file
+    a = true
+    b = false
+    # Parentheses can be used to control precedence
+    if not (a and b) and (a or b):
+        message "a xor b"
+    elif a and b:
+        message "a and b"
+    else:
+        message "a nor b"
+
+label loops:
+    x = 5
+    while x > 0:
+        x = x + 1
+    # x will be 0 

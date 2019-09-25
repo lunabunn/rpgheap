@@ -233,10 +233,11 @@ class Interactable extends Entity {
     public function new(charchip: Tile, brain: Brain) {
         super(charchip, brain);
         var scanner = new Script.Scanner();
-        script = scanner.tokenize("message \"Hello, World!\"\nmessage \"Bye, World!\"");
+        script = scanner.tokenize(hxd.Res.scripts.prologue.entry.getText());
+        trace(parser.parse(script));
     }
 
     public function interact() {
-        if (!parser.running) parser.parse(script);
+        // if (!parser.running) parser.parse(script);
     }
 }

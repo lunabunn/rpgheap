@@ -1,5 +1,5 @@
 {
-    "source": "chessboard.png",
+    "source": "tilesets/chessboard.png",
     "colliders": {
         "2": [true, true, true, true]
     }
