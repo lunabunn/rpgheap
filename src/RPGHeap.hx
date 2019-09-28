@@ -15,6 +15,15 @@ class RPGHeap extends hxd.App {
     public static var gameboard: Array<Array<Array<Entity>>>;
     public static var debugGraphics: DebugGraphics;
 
+    public static var events: Map<String, Void->Event> = [
+        "message" => Event.MessageEvent.new,
+        "menu" => Event.MenuEvent.new,
+        "delay" => Event.DelayEvent.new,
+        "cameramode" => Event.CameraModeEvent.new,
+        "camerawalk" => Event.CameraWalkEvent.new,
+        "shake" => Event.ShakeEvent.new
+    ];
+
     public static function get(): RPGHeap {
         return current;
     }
@@ -49,7 +58,7 @@ class RPGHeap extends hxd.App {
             entity.update(dt);
         }
         if (isCameraAuto) viewport.center(player);
-        for (event in Event.events) {
+        for (event in Event.activeEvents) {
             event.update(dt);
         }
         debugGraphics.update(dt);
@@ -67,7 +76,6 @@ class RPGHeap extends hxd.App {
     }
 
     static function createGameboard(w: Int, h: Int): Array<Array<Array<Entity>>> {
-        trace(w, h);
         var out = new Array<Array<Array<Entity>>>();
         for (x in 0...w) {
             var sub = new Array<Array<Entity>>();

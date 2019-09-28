@@ -71,7 +71,6 @@ class Tileset {
             }
             var tileset = new Tileset(tile, tiles, colliders);
             _tilesets.set(tilesetFile, tileset);
-            trace(tileset);
             return tileset;
         }
     }

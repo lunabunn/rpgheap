@@ -7,14 +7,14 @@ using Utilities.MathExtensions;
 
 class Event {
     public var callback: Void->Void;
-    public static var events = new Array<Event>();
+    public static var activeEvents = new Array<Event>();
 
     public function new() {}
     public function update(dt: Float) {}
     public function run(callback: Void->Void, ?args: Array<Dynamic>) {
-        events.push(this);
+        activeEvents.push(this);
         this.callback = function() {
-            events.remove(this);
+            activeEvents.remove(this);
             callback();
         };
     }
@@ -63,6 +63,96 @@ class MessageEvent extends Event {
     var string: String;
     var timer: Int;
     var reveal: Int;
+
+    public function new() {
+        super();
+        container = new Object(RPGHeap.get().s2d);
+        container.visible = false;
+        box = new Bitmap(Tile.fromColor(0x99999999), container);
+        box.y = RPGHeap.HEIGHT / 2;
+        box.scaleX = RPGHeap.WIDTH;
+        box.scaleY = RPGHeap.HEIGHT / 2;
+        box.alpha = .5;
+        text = new Text(hxd.res.DefaultFont.get(), container);
+        text.x = 20;
+        text.y = RPGHeap.HEIGHT / 2 + 20;
+    }
+}
+
+class MenuEvent extends Event {
+    // Usage: menu
+    // Displays a menu
+
+    // MenuEvent is special, so... I know, very hacky.
+    public function runCustom(callback: Int->Void, choices: Array<String>) {
+        Event.activeEvents.push(this);
+        callbackCustom = callback;
+        text.text = "";
+        this.choices = choices;
+        var i = 1;
+        for (choice in choices) {
+            text.text += '${i % 10}: $choice\n';
+            i++;
+        }
+        takeInput = false;
+        container.visible = true;
+    }
+
+    override public function update(dt: Float) {
+        if (takeInput) {
+            if (Key.isPressed(Key.NUMBER_1) && choices.length > 0) {
+                Event.activeEvents.remove(this);
+                container.visible = false;
+                callbackCustom(0);
+            } else if (Key.isPressed(Key.NUMBER_2) && choices.length > 1) {
+                Event.activeEvents.remove(this);
+                container.visible = false;
+                callbackCustom(1);
+            } else if (Key.isPressed(Key.NUMBER_3) && choices.length > 2) {
+                Event.activeEvents.remove(this);
+                container.visible = false;
+                callbackCustom(2);
+            } else if (Key.isPressed(Key.NUMBER_4) && choices.length > 3) {
+                Event.activeEvents.remove(this);
+                container.visible = false;
+                callbackCustom(3);
+            } else if (Key.isPressed(Key.NUMBER_5) && choices.length > 4) {
+                Event.activeEvents.remove(this);
+                container.visible = false;
+                callbackCustom(4);
+            } else if (Key.isPressed(Key.NUMBER_6) && choices.length > 5) {
+                Event.activeEvents.remove(this);
+                container.visible = false;
+                callbackCustom(5);
+            } else if (Key.isPressed(Key.NUMBER_7) && choices.length > 6) {
+                Event.activeEvents.remove(this);
+                container.visible = false;
+                callbackCustom(6);
+            } else if (Key.isPressed(Key.NUMBER_8) && choices.length > 7) {
+                Event.activeEvents.remove(this);
+                container.visible = false;
+                callbackCustom(7);
+            } else if (Key.isPressed(Key.NUMBER_9) && choices.length > 8) {
+                Event.activeEvents.remove(this);
+                container.visible = false;
+                callbackCustom(8);
+            } else if (Key.isPressed(Key.NUMBER_0) && choices.length > 9) {
+                Event.activeEvents.remove(this);
+                container.visible = false;
+                callbackCustom(9);
+            }
+        } else {
+            takeInput = true;
+        }
+    }
+
+    var callbackCustom: Int->Void;
+    var container: Object;
+    var box: Bitmap;
+    var text: Text;
+    var choices: Array<String>;
+    var takeInput: Bool;
+    var string: String;
 
     public function new() {
         super();
@@ -158,7 +248,7 @@ class ShakeEvent extends Event {
     // Shakes the screen with strength <strength> for <duration> frames
     // If [async] is true, event(s) following this one will be executed right after screenshake begins
     override public function run(callback: Void->Void, ?args: Array<Dynamic>) {
-        Event.events.push(this);
+        Event.activeEvents.push(this);
         strength = args[0];
         timer = 0;
         duration = args[1];
@@ -171,7 +261,7 @@ class ShakeEvent extends Event {
 
     override public function update(dt: Float) {
         if (timer >= duration) {
-            Event.events.remove(this);
+            Event.activeEvents.remove(this);
             RPGHeap.viewport.container.x = 0;
             RPGHeap.viewport.container.y = 0;
             if (!async) callback();
