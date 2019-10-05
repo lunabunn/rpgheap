@@ -16,10 +16,17 @@ class Brain {
 }
 
 class PlayerBrain extends Brain {
+    public var paralyzed = false;
     private var movementQueue = new Array<Int>();
     final keyMap = [40 => 0, 37 => 1, 39 => 2, 38 => 3];
     
     override public function update(dt: Float): Void {
+        if (paralyzed) {
+            movementQueue = [];
+            moveDir = -1;
+            dash = false;
+            return;
+        }
         if (Key.isPressed(Key.DOWN) && movementQueue.indexOf(keyMap[Key.DOWN]) == -1) movementQueue.unshift(keyMap[Key.DOWN]);
         if (Key.isPressed(Key.LEFT) && movementQueue.indexOf(keyMap[Key.LEFT]) == -1) movementQueue.unshift(keyMap[Key.LEFT]);
         if (Key.isPressed(Key.RIGHT) && movementQueue.indexOf(keyMap[Key.RIGHT]) == -1) movementQueue.unshift(keyMap[Key.RIGHT]);
@@ -35,6 +42,7 @@ class PlayerBrain extends Brain {
     }
 
     override public function onGridEnd(dt: Float) {
+        if (paralyzed) return;
         if (Key.isPressed(Key.Z)) for (entity in RPGHeap.gameboard[owner.targetX][owner.targetY]) {
             if (entity == owner) continue;
             if (Std.is(entity, Entity.Interactable)) {

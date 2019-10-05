@@ -256,7 +256,7 @@ class Scanner {
                     value += str.charAt(i);
                     i++;
                 }
-                tokens[tokens.length - 1].push(new Token(line, start - isub + 1, RPGHeap.events.exists(value)? Tokens.EVENT:Tokens.IDENTIFIER, value));
+                tokens[tokens.length - 1].push(new Token(line, start - isub + 1, (Executer.eventNames.indexOf(value) != -1)? Tokens.EVENT:Tokens.IDENTIFIER, value));
                 continue;
             }
             
@@ -737,17 +737,28 @@ typedef ScriptProcess = {
 }
 
 class Executer {
+    public static final eventNames = [
+        "message",
+        "delay",
+        "cameramode",
+        "camerawalk",
+        "shake"
+    ];
+
+    public var callback: Void->Void;
     public var labels: Map<String, Label>;
     public var running: Bool = false;
     public var variables: Map<String, Dynamic> = [];
     var runHierarchy: Array<ScriptProcess>;
-    var events = new Map<String, Event>();
 
-    public function new(labels: Map<String, Label>) {
+    var messageBox = new Event.MessageBox();
+    var delay = new Event.Delay();
+    var cameraWalk = new Event.CameraWalk();
+    var screenShake = new Event.ScreenShake();
+
+    public function new(callback: Void->Void, labels: Map<String, Label>) {
+        this.callback = callback;
         this.labels = labels;
-        for (key in RPGHeap.events.keys()) {
-            events[key] = RPGHeap.events[key]();
-        }
     }
 
     public function execute(entryPoint="main") {
@@ -755,6 +766,14 @@ class Executer {
         running = true;
         executeCurrent();
     }
+
+    private function copyRunHierarchy(): Array<ScriptProcess> {
+        var out = new Array<ScriptProcess>();
+        for (process in runHierarchy) {
+            out.push({command: process.command, index: process.index});
+        }
+        return out;
+    } 
 
     private function executeCurrent() {
         while (runHierarchy.length > 0 && runHierarchy[0].index == runHierarchy[0].command.commands.length) {
@@ -770,6 +789,7 @@ class Executer {
         }
         if (runHierarchy.length == 0) {
             running = false;
+            callback();
             return;
         }
         var currentCmd = runHierarchy[0].command.commands[runHierarchy[0].index];
@@ -802,16 +822,24 @@ class Executer {
             for (arg in cast(currentCmd.args, Array<Dynamic>)) {
                 evaluatedArgs.push(Parser.evaluateExpression(arg, variables));
             }
-            events[currentCmd.event].run(executeCurrent, evaluatedArgs);
+            var nextCommand = (runHierarchy[0].command.commands.length > runHierarchy[0].index)? runHierarchy[0].command.commands[runHierarchy[0].index]:null;
+            switch (currentCmd.event) {
+                case "message": messageBox.message(executeCurrent, messageBoxStayOn(copyRunHierarchy(), variables.copy()), evaluatedArgs[0]);
+                case "delay": delay.delay(executeCurrent, evaluatedArgs[0], (evaluatedArgs.length > 1)? evaluatedArgs[0]:false);
+                case "cameramode": Event.cameraMode(executeCurrent, evaluatedArgs[0]);
+                case "camerawalk": cameraWalk.cameraWalk(executeCurrent, evaluatedArgs[0], evaluatedArgs[1], evaluatedArgs[2], (evaluatedArgs.length > 3)? evaluatedArgs[3]:false);
+                case "shake": screenShake.screenShake(executeCurrent, evaluatedArgs[0], evaluatedArgs[1], (evaluatedArgs.length > 2)? evaluatedArgs[2]:false, (evaluatedArgs.length > 3)? evaluatedArgs[3]:false);
+            }
+            //events[currentCmd.event](executeCurrent, evaluatedArgs);
         } else if (Std.is(currentCmd, Menu)) {
             var choices = new Array<String>();
             for (choice in cast(currentCmd, Menu).choices) {
                 choices.push(Parser.evaluateExpression(choice.value, variables));
             }
-            cast(events["menu"], Event.MenuEvent).runCustom(function (choice: Int) {
+            messageBox.menu(function (choice: Int) {
                 runHierarchy.unshift({command: currentCmd.choices[choice], index: 0});
                 executeCurrent();
-            }, choices);
+            }, messageBoxStayOn(copyRunHierarchy(), variables.copy()), choices);
         } else if (Std.is(currentCmd, Jump)) {
             runHierarchy.unshift({command: labels[currentCmd.label], index: 0});
             executeCurrent();
@@ -819,6 +847,51 @@ class Executer {
             variables[currentCmd.variable] = Parser.evaluateExpression(currentCmd.value, variables);
             executeCurrent();
         }
+    }
+
+    private function messageBoxStayOn(runHierarchy: Array<ScriptProcess>, variables: Map<String, Dynamic>) {
+        while (runHierarchy.length > 0 && runHierarchy[0].index == runHierarchy[0].command.commands.length) {
+            runHierarchy.shift();
+        }
+        if (runHierarchy.length == 0) {
+            return false;
+        }
+        var currentCmd = runHierarchy[0].command.commands[runHierarchy[0].index];
+        runHierarchy[0].index++;
+        if (Std.is(currentCmd, If)) {
+            if (Parser.evaluateExpression(currentCmd.condition, variables) == true) {
+                runHierarchy.unshift({command: currentCmd, index: 0});
+                return messageBoxStayOn(runHierarchy, variables);
+            }
+            
+            for (elifCmd in cast(currentCmd, If).elifCmds) {
+                if (Parser.evaluateExpression(elifCmd.condition, variables)) {
+                    runHierarchy.unshift({command: elifCmd, index: 0});
+                    return messageBoxStayOn(runHierarchy, variables);
+                }
+            }
+
+            if (currentCmd.elseCmd != null) {
+                runHierarchy.unshift({command: currentCmd.elseCmd, index: 0});
+                return messageBoxStayOn(runHierarchy, variables);
+            }
+        } else if (Std.is(currentCmd, While)) {
+            if (Parser.evaluateExpression(currentCmd.condition, variables)) {
+                runHierarchy.unshift({command: currentCmd, index: 0});
+            }
+            return messageBoxStayOn(runHierarchy, variables);
+        } else if (Std.is(currentCmd, RegularEventCall)) {
+            return (currentCmd.event == "message");
+        } else if (Std.is(currentCmd, Menu)) {
+            return true;
+        } else if (Std.is(currentCmd, Jump)) {
+            runHierarchy.unshift({command: labels[currentCmd.label], index: 0});
+            return messageBoxStayOn(runHierarchy, variables);
+        } else if (Std.is(currentCmd, SetVariable)) {
+            variables[currentCmd.variable] = Parser.evaluateExpression(currentCmd.value, variables);
+            return messageBoxStayOn(runHierarchy, variables);
+        }
+        return false;
     }
 }
 // end region

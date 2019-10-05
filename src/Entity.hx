@@ -231,10 +231,17 @@ class Interactable extends Entity {
     
     public function new(charchip: Tile, brain: Brain) {
         super(charchip, brain);
-        executer = new Script.Executer(Script.Parser.parse(new Script.Scanner().tokenize(hxd.Res.scripts.prologue.entry.getText())));
+        executer = new Script.Executer(onExecuterOver, Script.Parser.parse(new Script.Scanner().tokenize(hxd.Res.scripts.prologue.entry.getText())));
     }
 
     public function interact() {
-        if (!executer.running) {executer.execute();}
+        if (!executer.running) {
+            executer.execute();
+            cast(RPGHeap.player.brain, Brain.PlayerBrain).paralyzed = true;
+        }
+    }
+    
+    private function onExecuterOver() {
+        cast(RPGHeap.player.brain, Brain.PlayerBrain).paralyzed = false;
     }
 }

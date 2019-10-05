@@ -1,230 +1,206 @@
-import hxd.Key;
+import hxd.Res;
 import h2d.Text;
 import h2d.Tile;
 import h2d.Bitmap;
 import h2d.Object;
+import hxd.Key;
+
 using Utilities.MathExtensions;
 
 class Event {
-    public var callback: Void->Void;
-    public static var activeEvents = new Array<Event>();
+    public static var updates = new Array<Float->Void>();
 
-    public function new() {}
-    public function update(dt: Float) {}
-    public function run(callback: Void->Void, ?args: Array<Dynamic>) {
-        activeEvents.push(this);
-        this.callback = function() {
-            activeEvents.remove(this);
-            callback();
-        };
+    public static function cameraMode(callback: Void->Void, isCameraAuto: Bool) {
+        RPGHeap.isCameraAuto = isCameraAuto;
+        callback();
     }
 }
 
-class MessageEvent extends Event {
-    // Usage: message <text>
-    // Displays a message box containing <text>
-    override public function run(callback: Void->Void, ?args: Array<Dynamic>) {
-        super.run(callback);
-        text.text = "";
-        string = args[0];
-        reveal = 0;
-        timer = 5;
-        takeInput = false;
-        container.visible = true;
+class MessageBox {
+    var messageContainer: Object;
+    var box: NineSlice.NSRect;
+    var text: Text;
+    var menuContainer: Object;
+    var menuBox: NineSlice.NSRect;
+    var choiceBox: NineSlice.NSRect;
+    var choiceContainer: Object;
+    var takeInput: Bool;
+    var string: String;
+    var timer: Int;
+    var reveal: Int;
+    var choice: Int;
+    var isMenu = false;
+    var stayOn = false;
+
+    var messageCallback: Void->Void;
+    var menuCallback: Int->Void;
+
+    public function new() {
+        messageContainer = new Object(RPGHeap.get().s2d);
+        messageContainer.visible = false;
+
+        var nsSet = new NineSlice.NSSet(Res.gui.window.toTile(), 2, 2, 2, 2);
+
+        box = new NineSlice.NSRect(nsSet, messageContainer);
+        box.width = RPGHeap.WIDTH;
+        box.height = RPGHeap.HEIGHT / 3;
+        box.y = RPGHeap.HEIGHT - box.height;
+
+        text = new Text(hxd.res.DefaultFont.get(), messageContainer);
+        text.textColor = 0x222034;
+        text.x = 20;
+        text.y = box.y + 20;
+
+        menuContainer = new Object(RPGHeap.get().s2d);
+        menuContainer.visible = false;
+        
+        menuBox = new NineSlice.NSRect(nsSet, menuContainer);
+        choiceBox = new NineSlice.NSRect(nsSet, menuContainer);
+        menuBox.width = (choiceBox.width = RPGHeap.WIDTH / 3) + 20;
+        choiceBox.height = 36;
+        menuBox.x = RPGHeap.WIDTH - menuBox.width;
+        choiceBox.x = menuBox.x + 10;
+
+        choiceContainer = new Object(menuContainer);
+        choiceContainer.x = choiceBox.x + 10;
     }
 
-    override public function update(dt: Float) {
+    public function message(callback: Void->Void, stayOn: Bool, string: String) {
+        text.text = "";
+        this.stayOn = stayOn;
+        this.string = string;
+        reveal = 0;
+        timer = 2;
+        takeInput = false;
+        messageContainer.visible = true;
+        messageCallback = callback;
+        isMenu = false; // A message is being displayed, not a menu
+        Event.updates.push(update);
+    }
+
+    public function menu(callback: Int->Void, stayOn: Bool, choices: Array<String>) {
+        this.stayOn = stayOn;
+        choiceContainer.removeChildren();
+        menuBox.height = 20 + 36 * choices.length;
+        menuBox.y = box.y - menuBox.height;
+        choiceBox.y = menuBox.y + 10;
+        choiceContainer.y = choiceBox.y + 10;
+        var y = 0;
+        for (choice in choices) {
+            var choiceText = new Text(hxd.res.DefaultFont.get(), choiceContainer);
+            choiceText.text = choice;
+            choiceText.textColor = 0x222034;
+            choiceText.x = 0;
+            choiceText.y = y;
+            y += 36;
+        }
+        choice = 0;
+        takeInput = false;
+        menuContainer.visible = true;
+        menuCallback = callback;
+        isMenu = true; // A menu is being displayed
+        Event.updates.push(update);
+    }
+
+    public function update(dt: Float) {
         if (--timer == 0) {
             reveal++;
             text.text = string.substr(0, reveal);
             if (reveal < string.length) {
-                timer = 5;
+                timer = 2;
             }
         }
 
-        if (takeInput && Key.isPressed(Key.Z)) {
-            if (reveal < string.length) {
-                timer = -1;
-                reveal = string.length;
-                text.text = string.substr(0, reveal);
-            } else {
-                container.visible = false;
-                callback();
+        if (takeInput) {
+            if (isMenu) {
+                if (Key.isPressed(Key.DOWN)) {
+                    choice = (choice + 1) % choiceContainer.numChildren;
+                    choiceBox.y = menuBox.y + choiceContainer.getChildAt(choice).y + 10;
+                }
+                if (Key.isPressed(Key.UP)) {
+                    choice--;
+                    if (choice < 0) choice += choiceContainer.numChildren;
+                    choiceBox.y = menuBox.y + choiceContainer.getChildAt(choice).y + 10;
+                }
+                if (Key.isPressed(Key.Z)) {
+                    messageContainer.visible = stayOn;
+                    menuContainer.visible = false;
+                    Event.updates.remove(update);
+                    menuCallback(choice);
+                }
+            } else if (Key.isPressed(Key.Z)) {
+                if (reveal < string.length) {
+                    timer = -1;
+                    reveal = string.length;
+                    text.text = string.substr(0, reveal);
+                } else {
+                    messageContainer.visible = stayOn;
+                    Event.updates.remove(update);
+                    messageCallback();
+                }
             }
         }
         
         if (!takeInput) takeInput = true;
     }
-
-    var container: Object;
-    var box: Bitmap;
-    var text: Text;
-    var takeInput: Bool;
-    var string: String;
-    var timer: Int;
-    var reveal: Int;
-
-    public function new() {
-        super();
-        container = new Object(RPGHeap.get().s2d);
-        container.visible = false;
-        box = new Bitmap(Tile.fromColor(0x99999999), container);
-        box.y = RPGHeap.HEIGHT / 2;
-        box.scaleX = RPGHeap.WIDTH;
-        box.scaleY = RPGHeap.HEIGHT / 2;
-        box.alpha = .5;
-        text = new Text(hxd.res.DefaultFont.get(), container);
-        text.x = 20;
-        text.y = RPGHeap.HEIGHT / 2 + 20;
-    }
 }
 
-class MenuEvent extends Event {
-    // Usage: menu
-    // Displays a menu
+class Delay {
+    var timer: Float;
+    var duration: Int;
+    var lagCompensation: Bool;
+    var callback: Void->Void;
 
-    // MenuEvent is special, so... I know, very hacky.
-    public function runCustom(callback: Int->Void, choices: Array<String>) {
-        Event.activeEvents.push(this);
-        callbackCustom = callback;
-        text.text = "";
-        this.choices = choices;
-        var i = 1;
-        for (choice in choices) {
-            text.text += '${i % 10}: $choice\n';
-            i++;
-        }
-        takeInput = false;
-        container.visible = true;
-    }
+    public function new() {}
 
-    override public function update(dt: Float) {
-        if (takeInput) {
-            if (Key.isPressed(Key.NUMBER_1) && choices.length > 0) {
-                Event.activeEvents.remove(this);
-                container.visible = false;
-                callbackCustom(0);
-            } else if (Key.isPressed(Key.NUMBER_2) && choices.length > 1) {
-                Event.activeEvents.remove(this);
-                container.visible = false;
-                callbackCustom(1);
-            } else if (Key.isPressed(Key.NUMBER_3) && choices.length > 2) {
-                Event.activeEvents.remove(this);
-                container.visible = false;
-                callbackCustom(2);
-            } else if (Key.isPressed(Key.NUMBER_4) && choices.length > 3) {
-                Event.activeEvents.remove(this);
-                container.visible = false;
-                callbackCustom(3);
-            } else if (Key.isPressed(Key.NUMBER_5) && choices.length > 4) {
-                Event.activeEvents.remove(this);
-                container.visible = false;
-                callbackCustom(4);
-            } else if (Key.isPressed(Key.NUMBER_6) && choices.length > 5) {
-                Event.activeEvents.remove(this);
-                container.visible = false;
-                callbackCustom(5);
-            } else if (Key.isPressed(Key.NUMBER_7) && choices.length > 6) {
-                Event.activeEvents.remove(this);
-                container.visible = false;
-                callbackCustom(6);
-            } else if (Key.isPressed(Key.NUMBER_8) && choices.length > 7) {
-                Event.activeEvents.remove(this);
-                container.visible = false;
-                callbackCustom(7);
-            } else if (Key.isPressed(Key.NUMBER_9) && choices.length > 8) {
-                Event.activeEvents.remove(this);
-                container.visible = false;
-                callbackCustom(8);
-            } else if (Key.isPressed(Key.NUMBER_0) && choices.length > 9) {
-                Event.activeEvents.remove(this);
-                container.visible = false;
-                callbackCustom(9);
-            }
-        } else {
-            takeInput = true;
-        }
-    }
-
-    var callbackCustom: Int->Void;
-    var container: Object;
-    var box: Bitmap;
-    var text: Text;
-    var choices: Array<String>;
-    var takeInput: Bool;
-    var string: String;
-
-    public function new() {
-        super();
-        container = new Object(RPGHeap.get().s2d);
-        container.visible = false;
-        box = new Bitmap(Tile.fromColor(0x99999999), container);
-        box.y = RPGHeap.HEIGHT / 2;
-        box.scaleX = RPGHeap.WIDTH;
-        box.scaleY = RPGHeap.HEIGHT / 2;
-        box.alpha = .5;
-        text = new Text(hxd.res.DefaultFont.get(), container);
-        text.x = 20;
-        text.y = RPGHeap.HEIGHT / 2 + 20;
-    }
-}
-
-class DelayEvent extends Event {
-    // Usage: delay <duaration> [lagCompensation=false]
-    // Delays the execution of any events following by <duration> frames
-    // If lagCompensation is true, will take the delta time of each frame into account
-    override public function run(callback: Void->Void, ?args: Array<Dynamic>) {
-        super.run(callback);
+    public function delay(callback: Void->Void, duration: Int, lagCompensation: Bool) {
         timer = 0;
-        duration = args[0];
-        if (args.length > 1) lagCompensation = args[1];
-        else lagCompensation = false;
+        this.duration = duration;
+        this.lagCompensation = lagCompensation;
+        this.callback = callback;
+        Event.updates.push(update);
     }
 
-    override public function update(dt: Float) {
+    public function update(dt: Float) {
         if (timer >= duration) {
+            Event.updates.remove(update);
             callback();
             return;
         }
         if (lagCompensation) timer += dt * 60;
         else timer++;
     }
+}
 
+class CameraWalk {
+    var bx: Float;
+    var by: Float;
+    var dx: Float;
+    var dy: Float;
     var timer: Float;
     var duration: Int;
     var lagCompensation: Bool;
-}
+    var callback: Void->Void;
 
-class CameraModeEvent extends Event {
-    // Usage: cameramode <auto>
-    // Sets the camera mode; <auto> determines whether or not the camera will automatically follow the player
-    override public function run(callback: Void->Void, ?args: Array<Dynamic>) {
-        super.run(callback);
-        RPGHeap.isCameraAuto = args[0];
-        this.callback();
-    }
-}
+    public function new() {}
 
-class CameraWalkEvent extends Event {
-    // Usage: camerawalk <x> <y> <duration> [lagCompensation=false]
-    // Moves the camera <x> pixels to the right and <y> pixels down over <duration> frames
-    // If lagCompensation is true, will take the delta time of each frame into account
-    override public function run(callback: Void->Void, ?args: Array<Dynamic>) {
-        super.run(callback);
+    public function cameraWalk(callback: Void->Void, dx: Float, dy: Float, duration: Int, lagCompensation: Bool) {
         bx = RPGHeap.viewport.x;
         by = RPGHeap.viewport.y;
-        dx = args[0];
-        dy = args[1];
+        this.dx = dx;
+        this.dy = dy;
         timer = 0;
-        duration = args[2];
-        if (args.length > 3) lagCompensation = args[3];
-        else lagCompensation = false;
+        this.duration = duration;
+        this.lagCompensation = lagCompensation;
+        this.callback = callback;
+        Event.updates.push(update);
     }
 
-    override public function update(dt: Float) {
+    public function update(dt: Float) {
         if (timer >= duration) {
             RPGHeap.viewport.x = bx - dx;
             RPGHeap.viewport.y = by - dy;
+            Event.updates.remove(update);
             callback();
         } else {
             RPGHeap.viewport.x = bx - dx * (timer / duration);
@@ -233,49 +209,39 @@ class CameraWalkEvent extends Event {
             else timer++;
         }
     }
-
-    public var bx: Float;
-    public var by: Float;
-    public var dx: Float;
-    public var dy: Float;
-    public var timer: Float;
-    public var duration: Int;
-    public var lagCompensation: Bool;
 }
 
-class ShakeEvent extends Event {
-    // Usage: shake <strength> <duration> [async=false] [lagCompensation=false]
-    // Shakes the screen with strength <strength> for <duration> frames
-    // If [async] is true, event(s) following this one will be executed right after screenshake begins
-    override public function run(callback: Void->Void, ?args: Array<Dynamic>) {
-        Event.activeEvents.push(this);
-        strength = args[0];
+class ScreenShake {
+    var strength: Float;
+    var timer: Float;
+    var duration: Int;
+    var async: Bool;
+    var lagCompensation: Bool;
+    var callback: Void->Void;
+
+    public function new() {}
+
+    public function screenShake(callback: Void->Void, strength: Float, duration: Int, async: Bool, lagCompensation: Bool) {
+        this.strength = strength;
         timer = 0;
-        duration = args[1];
-        if (args.length > 2) async = args[2];
-        else async = false;
-        if (args.length > 3) lagCompensation = args[3];
-        else lagCompensation = false;
+        this.duration = duration;
+        this.async = async;
+        this.lagCompensation = lagCompensation;
         if (async) callback();
+        this.callback = callback;
+        Event.updates.push(update);
     }
 
-    override public function update(dt: Float) {
+    public function update(dt: Float) {
         if (timer >= duration) {
-            Event.activeEvents.remove(this);
             RPGHeap.viewport.container.x = 0;
             RPGHeap.viewport.container.y = 0;
+            Event.updates.remove(update);
             if (!async) callback();
             return;
         }
         RPGHeap.viewport.container.x = Math.randomRange(-strength, strength);
-        RPGHeap.viewport.container.y = Math.randomRange(-strength, strength);
         if (lagCompensation) timer += dt * 60;
         else timer++;
     }
-
-    public var strength: Float;
-    public var timer: Float;
-    public var duration: Int;
-    public var async: Bool;
-    public var lagCompensation: Bool;
 }
