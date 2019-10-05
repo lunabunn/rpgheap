@@ -36,4 +36,12 @@ class MathExtensions {
     public static function irandom(cl: Class<Math>, a: Int, b: Int): Int {
         return a + Math.floor((b - a + 1) * Math.random());
     }
+
+    /**
+     * Returns either `a` or `b`, pseudo-randomly.
+     */
+    public static function choose<T>(cl: Class<Math>, a: T, b: T): T {
+        if (Math.floor(Math.random() * 2) == 0) return a;
+        return b;
+    }
 }
