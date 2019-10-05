@@ -2,8 +2,6 @@ import h2d.Object;
 import h2d.Bitmap;
 import h2d.Tile;
 
-using Utilities.MathExtensions;
-
 class Entity {
     public var sprite: Object;
     public var collider: Array<Bool> = [true, true, true, true];
@@ -11,6 +9,7 @@ class Entity {
 
     public var bitmap: Bitmap;
     public var speed: Float = 2;
+    public var dashMult: Float = 2;
     public var brain: Brain;
 
     var anims = new Array<Array<Tile>>();
@@ -137,28 +136,29 @@ class Entity {
 
     public function update(dt: Float) {
         brain.update(dt);
+        var _speed = speed * (brain.dash? dashMult:1);
 
-        if ((remX < speed || RPGHeap.GRID_WIDTH - remX < speed)
-            && (remY < speed || RPGHeap.GRID_HEIGHT - remY < speed)) {
+        if ((remX < _speed || RPGHeap.GRID_WIDTH - remX < _speed)
+            && (remY < _speed || RPGHeap.GRID_HEIGHT - remY < _speed)) {
             brain.onGridBegin(dt);
             
             if (brain.moveDir != -1) {
-                if (remX < speed) remX = 0;
-                if (remY < speed) remY = 0;
-                if (RPGHeap.GRID_WIDTH - remX < speed) {
+                if (remX < _speed) remX = 0;
+                if (remY < _speed) remY = 0;
+                if (RPGHeap.GRID_WIDTH - remX < _speed) {
                     gridX++;
                     remX = 0;
                 }
-                if (RPGHeap.GRID_HEIGHT - remY < speed) {
+                if (RPGHeap.GRID_HEIGHT - remY < _speed) {
                     gridY++;
                     remY = 0;
                 }
 
                 switch (brain.moveDir) {
-                    case 0: deltaX = 0; deltaY = speed;
-                    case 1: deltaX = -speed; deltaY = 0;
-                    case 2: deltaX = speed; deltaY = 0;
-                    case 3: deltaX = 0; deltaY = -speed;
+                    case 0: deltaX = 0; deltaY = 1;
+                    case 1: deltaX = -1; deltaY = 0;
+                    case 2: deltaX = 1; deltaY = 0;
+                    case 3: deltaX = 0; deltaY = -1;
                 }
                 
                 animPaused = false;
@@ -168,10 +168,10 @@ class Entity {
             } else {
                 deltaX = 0;
                 deltaY = 0;
-                if (RPGHeap.GRID_WIDTH - remX < speed) {
+                if (RPGHeap.GRID_WIDTH - remX < _speed) {
                     gridX++;
                 }
-                if (RPGHeap.GRID_HEIGHT - remY < speed) {
+                if (RPGHeap.GRID_HEIGHT - remY < _speed) {
                     gridY++;
                 }
                 remX = 0;
@@ -181,16 +181,16 @@ class Entity {
             }
 
             if (brain.moveDir != -1) {
-                targetX = gridX + ((RPGHeap.GRID_WIDTH - remX < speed)? 1:0) + Math.sign(deltaX);
-                targetY = gridY + ((RPGHeap.GRID_HEIGHT - remY < speed)? 1:0) + Math.sign(deltaY);
+                targetX = gridX + ((RPGHeap.GRID_WIDTH - remX < _speed)? 1:0) + cast(deltaX, Int);
+                targetY = gridY + ((RPGHeap.GRID_HEIGHT - remY < _speed)? 1:0) + cast(deltaY, Int);
                 
                 if (RPGHeap.getCollider(gridX, gridY, brain.moveDir, true) || RPGHeap.getCollider(targetX, targetY, 3 - brain.moveDir, this)) {
                     deltaX = 0;
                     deltaY = 0;
-                    if (RPGHeap.GRID_WIDTH - remX < speed) {
+                    if (RPGHeap.GRID_WIDTH - remX < _speed) {
                         gridX++;
                     }
-                    if (RPGHeap.GRID_HEIGHT - remY < speed) {
+                    if (RPGHeap.GRID_HEIGHT - remY < _speed) {
                         gridY++;
                     }
                     remX = 0;
@@ -207,16 +207,16 @@ class Entity {
             }
         }
 
-        if (!animPaused && remX % (RPGHeap.GRID_WIDTH / 2) < speed && remY % (RPGHeap.GRID_HEIGHT / 2) < speed) {
+        if (!animPaused && remX % (RPGHeap.GRID_WIDTH / 2) < _speed && remY % (RPGHeap.GRID_HEIGHT / 2) < _speed) {
             currentFrame++;
         }
 
         brain.onGridEnd(dt);
 
-        remX += deltaX;
+        remX += deltaX * _speed;
         while (remX >= RPGHeap.GRID_WIDTH) {remX -= RPGHeap.GRID_WIDTH; gridX++;}
         while (remX < 0) {remX += RPGHeap.GRID_WIDTH; gridX--;}
-        remY += deltaY;
+        remY += deltaY * _speed;
         while (remY >= RPGHeap.GRID_HEIGHT) {remY -= RPGHeap.GRID_HEIGHT; gridY++;}
         while (remY < 0) {remY += RPGHeap.GRID_HEIGHT; gridY--;}
 

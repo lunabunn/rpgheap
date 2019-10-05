@@ -2,6 +2,7 @@ import hxd.Key;
 
 class Brain {
     public var moveDir: Int = -1;
+    public var dash: Bool = false;
     public var owner: Entity;
 
     public function init(owner: Entity): Void {
@@ -27,6 +28,7 @@ class PlayerBrain extends Brain {
         if (Key.isReleased(Key.LEFT)) movementQueue.remove(keyMap[Key.LEFT]);
         if (Key.isReleased(Key.RIGHT)) movementQueue.remove(keyMap[Key.RIGHT]);
         if (Key.isReleased(Key.UP)) movementQueue.remove(keyMap[Key.UP]);
+        dash = Key.isDown(Key.LSHIFT);
 
         if (movementQueue.length > 0) moveDir = movementQueue[0];
         else moveDir = -1;
