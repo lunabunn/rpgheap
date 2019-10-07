@@ -136,10 +136,9 @@ class Entity {
 
     public function update(dt: Float) {
         brain.update(dt);
-        var _speed = speed * (brain.dash? dashMult:1);
+        var _speed = speed * (brain.dash? dashMult:1) * dt * 60;
 
-        if ((remX < _speed || RPGHeap.GRID_WIDTH - remX < _speed)
-            && (remY < _speed || RPGHeap.GRID_HEIGHT - remY < _speed)) {
+        if ((remX == 0 && remY == 0) || (remX + deltaX * _speed > RPGHeap.GRID_WIDTH) || (remX + deltaX * _speed < 0) || (remY + deltaY * _speed > RPGHeap.GRID_HEIGHT) || (remY + deltaY * _speed < 0)) {
             brain.onGridBegin(dt);
             
             if (brain.moveDir != -1) {
@@ -162,6 +161,7 @@ class Entity {
                 }
                 
                 animPaused = false;
+                currentFrame++;
                 if (currentAnim != brain.moveDir) {
                     currentAnim = brain.moveDir;
                 }
@@ -207,7 +207,12 @@ class Entity {
             }
         }
 
-        if (!animPaused && remX % (RPGHeap.GRID_WIDTH / 2) < _speed && remY % (RPGHeap.GRID_HEIGHT / 2) < _speed) {
+        if (!animPaused && (
+            (remX <= RPGHeap.GRID_WIDTH / 2 && remX + deltaX * _speed > RPGHeap.GRID_WIDTH / 2)
+            || (remY <= RPGHeap.GRID_HEIGHT / 2 && remY + deltaY * _speed > RPGHeap.GRID_HEIGHT / 2)
+            || (remX >= RPGHeap.GRID_WIDTH / 2 && remX + deltaX * _speed < RPGHeap.GRID_WIDTH / 2)
+            || (remY >= RPGHeap.GRID_HEIGHT / 2 && remY + deltaY * _speed < RPGHeap.GRID_HEIGHT / 2)
+        )) {
             currentFrame++;
         }
 
