@@ -256,7 +256,7 @@ class Scanner {
                     value += str.charAt(i);
                     i++;
                 }
-                tokens[tokens.length - 1].push(new Token(line, start - isub + 1, (Executer.eventNames.indexOf(value) != -1)? Tokens.EVENT:Tokens.IDENTIFIER, value));
+                tokens[tokens.length - 1].push(new Token(line, start - isub + 1, Tokens.IDENTIFIER, value));
                 continue;
             }
             
@@ -280,6 +280,18 @@ class Scanner {
         }
 
         tokens[tokens.length - 1].push(new Token(line, i - isub + 1, Tokens.EOF));
+        for (line in tokens) {
+            var initialIdentifier = null;
+            for (token in line) {
+                if (token.type == Tokens.SPACE) continue;
+                else if (initialIdentifier != null) {
+                    if (token.type != Tokens.EQUAL) initialIdentifier.type = Tokens.EVENT;
+                    break;
+                } else if (token.type == Tokens.IDENTIFIER) initialIdentifier = token;
+                else break;
+            }
+        }
+        
         return tokens;
     }
 
@@ -737,14 +749,6 @@ typedef ScriptProcess = {
 }
 
 class Executer {
-    public static final eventNames = [
-        "message",
-        "delay",
-        "cameramode",
-        "camerawalk",
-        "shake"
-    ];
-
     public var callback: Void->Void;
     public var labels: Map<String, Label>;
     public var running: Bool = false;
