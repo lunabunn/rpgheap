@@ -1,3 +1,5 @@
+import h2d.Scene;
+
 class MathExtensions {
     /**
      * Returns the signum value of `x`.
@@ -44,4 +46,53 @@ class MathExtensions {
         if (Math.floor(Math.random() * 2) == 0) return a;
         return b;
     }
+}
+
+class ClippedScene extends Scene {
+    public var clipWidth: Float;
+    public var clipHeight: Float;
+
+    public function new(clipWidth: Float, clipHeight: Float) {
+        super();
+        this.clipWidth = clipWidth;
+        this.clipHeight = clipHeight;
+    }
+
+	override function drawRec(ctx: h2d.RenderContext) @:privateAccess {
+		var x1 = absX;
+		var y1 = absY;
+
+		var x2 = clipWidth * matA + clipHeight * matC + absX;
+		var y2 = clipWidth * matB + clipHeight * matD + absY;
+
+		var tmp;
+		if (x1 > x2) {
+			tmp = x1;
+			x1 = x2;
+			x2 = tmp;
+		}
+
+		if (y1 > y2) {
+			tmp = y1;
+			y1 = y2;
+			y2 = tmp;
+		}
+
+		ctx.flush();
+		if (ctx.hasRenderZone) {
+			var oldX = ctx.renderX,
+				oldY = ctx.renderY,
+				oldW = ctx.renderW,
+				oldH = ctx.renderH;
+			ctx.setRenderZone(x1, y1, x2 - x1, y2 - y1);
+			super.drawRec(ctx);
+			ctx.flush();
+			ctx.setRenderZone(oldX, oldY, oldW, oldH);
+		} else {
+			ctx.setRenderZone(x1, y1, x2 - x1, y2 - y1);
+			super.drawRec(ctx);
+			ctx.flush();
+			ctx.clearRenderZone();
+		}
+	}
 }

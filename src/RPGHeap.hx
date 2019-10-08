@@ -21,6 +21,7 @@ class RPGHeap extends hxd.App {
     
     override function init() {
         hxd.Res.initEmbed();
+        setScene2D(new Utilities.ClippedScene(WIDTH, HEIGHT));
         s2d.scaleMode = ScaleMode.LetterBox(WIDTH, HEIGHT);
 
         viewport = new Viewport(s2d);
